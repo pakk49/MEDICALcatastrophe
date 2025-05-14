@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_migrate import Migrate
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import plotly
 import plotly.graph_objs as go
@@ -32,7 +32,7 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', os.urandom(24))
 # ตั้งค่าเพิ่มเติมสำหรับ production
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['PROPAGATE_EXCEPTIONS'] = True  # เพื่อให้เห็น error details
-app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(minutes=60)  # Session timeout
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=60)  # Session timeout
 
 # ตั้งค่าฐานข้อมูล
 database_url = os.environ.get('DATABASE_URL')
