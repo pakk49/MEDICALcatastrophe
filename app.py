@@ -7,17 +7,31 @@ from datetime import datetime
 import json
 import plotly
 import plotly.graph_objs as go
-from datetime import datetime
 import pandas as pd
+import os
 
+# สร้าง Flask app
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-here'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///medical_app.db'
+
+# ตั้งค่า Secret Key
+app.config['SECRET_KEY'] = os.urandom(24)
+
+# ตั้งค่าฐานข้อมูล
+base_dir = os.path.abspath(os.path.dirname(__file__))
+db_path = os.path.join(base_dir, 'instance', 'medical_app.db')
+os.makedirs(os.path.dirname(db_path), exist_ok=True)
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# สร้าง instances
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+
+# ตั้งค่า login manager
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+login_manager.login_message = 'กรุณาเข้าสู่ระบบก่อนใช้งาน'
 
 # Custom Jinja2 filters
 @app.template_filter('fromjson')
@@ -274,7 +288,27 @@ def forgot_password():
         flash('ไม่พบอีเมลนี้ในระบบ')
     return render_template('forgot_password.html')
 
+def init_db():
+    """ฟังก์ชันสำหรับสร้างฐานข้อมูล"""
+    try:
+        with app.app_context():
+            # สร้างตารางถ้ายังไม่มี
+            db.create_all()
+            print("Database initialized successfully!")
+    except Exception as e:
+        print(f"Error initializing database: {e}")
+        return False
+    return True
+
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-    app.run(debug=True)
+    try:
+        # สร้างฐานข้อมูล
+        if not init_db():
+            print("Failed to initialize database. Exiting...")
+            exit(1)
+        
+        # รันแอพพลิเคชัน
+        app.run(host='127.0.0.1', port=5000, debug=True)
+    except Exception as e:
+        print(f"Application error: {e}")
+        exit(1)
