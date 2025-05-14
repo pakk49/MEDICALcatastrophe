@@ -1,1 +1,1 @@
-web: waitress-serve --port=$PORT app:app
+web: waitress-serve --port=%PORT% --threads=4 --connection-limit=1000 app:app

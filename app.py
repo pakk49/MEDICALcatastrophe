@@ -9,6 +9,8 @@ import plotly
 import plotly.graph_objs as go
 import pandas as pd
 import os
+import time
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
 # สร้าง Flask app
 app = Flask(__name__)
@@ -34,36 +36,52 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['PROPAGATE_EXCEPTIONS'] = True  # เพื่อให้เห็น error details
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=60)  # Session timeout
 
-# ตั้งค่าฐานข้อมูล
-database_url = os.environ.get('DATABASE_URL')
-
-try:
+def get_database_url():
+    database_url = os.environ.get('DATABASE_URL')
     if database_url:
         # แก้ไข URL สำหรับ PostgreSQL บน Render.com
         if database_url.startswith("postgres://"):
             database_url = database_url.replace("postgres://", "postgresql://", 1)
-        app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-        # ตั้งค่า connection pool สำหรับ PostgreSQL
-        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-            'pool_size': 5,  # จำนวน connections ในพูล
-            'max_overflow': 2,  # จำนวน connections เพิ่มเติมที่อนุญาต
-            'pool_timeout': 30,  # timeout สำหรับการรอ connection (วินาที)
-            'pool_recycle': 1800,  # รีไซเคิล connections ทุก 30 นาที
-            'pool_pre_ping': True,  # ทดสอบ connection ก่อนใช้งาน
-        }
+        return database_url
     else:
         # ใช้ SQLite สำหรับ development
         base_dir = os.path.abspath(os.path.dirname(__file__))
         db_path = os.path.join(base_dir, 'instance', 'medical_app.db')
         if not os.path.exists('instance'):
             os.makedirs('instance')
-        app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+        return f'sqlite:///{db_path}'
+
+# ตั้งค่าฐานข้อมูล
+def configure_database():
+    database_url = get_database_url()
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+
+    if database_url.startswith('postgresql://'):
+        # ตั้งค่า connection pool สำหรับ PostgreSQL
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+            'pool_size': 5,
+            'max_overflow': 2,
+            'pool_timeout': 30,
+            'pool_recycle': 1800,
+            'pool_pre_ping': True,
+            'connect_args': {
+                'connect_timeout': 10,
+                'keepalives': 1,
+                'keepalives_idle': 30,
+                'keepalives_interval': 10,
+                'keepalives_count': 5
+            }
+        }
+    else:
         # ตั้งค่าสำหรับ SQLite
         app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-            'connect_args': {'timeout': 15},  # timeout สำหรับ SQLite
+            'connect_args': {
+                'timeout': 15
+            }
         }
-except Exception as e:
-    print(f"Database configuration error: {e}")
+
+# ตั้งค่าฐานข้อมูล
+configure_database()
 
 # สร้าง instances
 db = SQLAlchemy(app)
@@ -520,24 +538,6 @@ def dashboard():
         
         # BMI Graph
         bmis = [(c.weight / ((c.height/100) ** 2)) for c in consultations]
-        bmi_fig = go.Figure(data=[go.Scatter(x=dates, y=bmis, mode='lines+markers', name='BMI')])
-        bmi_fig.update_layout(
-            title='ประวัติค่าดัชนีมวลกาย (BMI)',
-            xaxis_title='วันที่',
-            yaxis_title='BMI',
-            template='plotly_dark'
-        )
-        
-        # Weight History Graph
-        weights = [c.weight for c in consultations]
-        weight_fig = go.Figure(data=[go.Scatter(x=dates, y=weights, mode='lines+markers', name='น้ำหนัก')])
-        weight_fig.update_layout(
-            title='ประวัติน้ำหนัก',
-            xaxis_title='วันที่',
-            yaxis_title='น้ำหนัก (กก.)',
-            template='plotly_dark'
-        )
-        
         # Symptom Frequency Graph
         all_symptoms = []
         for c in consultations:
@@ -636,29 +636,59 @@ def internal_error(error):
 def health_check():
     return jsonify({"status": "healthy"}), 200
 
-def init_db():
-    """ฟังก์ชันสำหรับสร้างฐานข้อมูล"""
-    try:
-        with app.app_context():
-            # ทดสอบการเชื่อมต่อฐานข้อมูล
-            db.engine.connect()
-            # สร้างตารางถ้ายังไม่มี
-            db.create_all()
-            app.logger.info("Database initialized successfully!")
-            return True
-    except Exception as e:
-        app.logger.error(f"Database initialization error: {str(e)}")
-        return False
+def init_db(max_retries=3, retry_delay=5):
+    """Initialize database with retry mechanism
+    
+    Args:
+        max_retries (int): Maximum number of connection attempts
+        retry_delay (int): Delay in seconds between retries
+    """
+    retries = 0
+    last_exception = None
+
+    while retries < max_retries:
+        try:
+            with app.app_context():
+                # Test database connection
+                db.engine.connect()
+                
+                # Create tables if they don't exist
+                db.create_all()
+                
+                # Verify tables were created
+                tables = db.engine.table_names()
+                if not tables:
+                    raise Exception("No tables were created")
+                
+                app.logger.info(f"Database initialized successfully! Tables: {tables}")
+                return True
+
+        except Exception as e:
+            last_exception = e
+            retries += 1
+            app.logger.warning(f"Database initialization attempt {retries} failed: {str(e)}")
+            
+            if retries < max_retries:
+                app.logger.info(f"Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+            else:
+                app.logger.error(f"Database initialization failed after {max_retries} attempts. Last error: {str(e)}")
+                return False
+
+    return False
 
 if __name__ == '__main__':
     try:
-        # สร้างฐานข้อมูล
+        # Initialize database with retry mechanism
         if not init_db():
-            print("Failed to initialize database. Exiting...")
+            app.logger.error("Failed to initialize database. Exiting...")
             exit(1)
         
-        # รันแอพพลิเคชัน
-        app.run(host='127.0.0.1', port=5000, debug=True)
+        # Get port from environment or use default
+        port = int(os.environ.get('PORT', 5000))
+        
+        # Run application
+        app.run(host='0.0.0.0', port=port, debug=False)
     except Exception as e:
         print(f"Application error: {e}")
         exit(1)
