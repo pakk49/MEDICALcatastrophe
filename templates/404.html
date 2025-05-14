@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="alert alert-warning">
+        <h2>ไม่พบหน้าที่คุณต้องการ (404)</h2>
+        <p>ขออภัย ไม่พบหน้าที่คุณต้องการ กรุณาตรวจสอบ URL อีกครั้ง</p>
+        <p><a href="{{ url_for('index') }}" class="btn btn-primary">กลับหน้าหลัก</a></p>
+    </div>
+</div>
+{% endblock %}

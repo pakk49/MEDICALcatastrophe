@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="alert alert-danger">
+        <h2>เกิดข้อผิดพลาด (500)</h2>
+        <p>ขออภัย เกิดข้อผิดพลาดที่เซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้งในภายหลัง</p>
+        <p><a href="{{ url_for('index') }}" class="btn btn-primary">กลับหน้าหลัก</a></p>
+    </div>
+</div>
+{% endblock %}
