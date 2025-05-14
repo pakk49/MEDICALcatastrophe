@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">แก้ไขข้อมูลส่วนตัว</h2>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-info">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" class="needs-validation">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>ข้อมูลพื้นฐาน</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="email" class="form-label">อีเมล</label>
+                    <input type="email" class="form-control" id="email" name="email" value="{{ current_user.email }}" required>
+                </div>
+                <div class="mb-3">
+                    <label for="birth_date" class="form-label">วันเกิด</label>
+                    <input type="date" class="form-control" id="birth_date" name="birth_date" value="{{ current_user.birth_date.strftime('%Y-%m-%d') }}" required>
+                </div>
+                <div class="mb-3">
+                    <label for="gender" class="form-label">เพศ</label>
+                    <select class="form-select" id="gender" name="gender" required>
+                        <option value="ชาย" {% if current_user.gender == 'ชาย' %}selected{% endif %}>ชาย</option>
+                        <option value="หญิง" {% if current_user.gender == 'หญิง' %}selected{% endif %}>หญิง</option>
+                        <option value="อื่นๆ" {% if current_user.gender == 'อื่นๆ' %}selected{% endif %}>อื่นๆ</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>ข้อมูลสุขภาพ</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="health_conditions" class="form-label">โรคประจำตัว</label>
+                    <textarea class="form-control" id="health_conditions" name="health_conditions" rows="3" placeholder="ระบุโรคประจำตัว (ถ้ามี)">{{ current_user.health_conditions }}</textarea>
+                    <div class="form-text">กรุณาระบุโรคประจำตัวโดยคั่นด้วยเครื่องหมายจุลภาค (,) เช่น เบาหวาน, ความดันโลหิตสูง</div>
+                </div>
+                <div class="mb-3">
+                    <label for="drug_allergies" class="form-label">อาการแพ้ยา</label>
+                    <textarea class="form-control" id="drug_allergies" name="drug_allergies" rows="3" placeholder="ระบุยาที่แพ้ (ถ้ามี)">{{ current_user.drug_allergies }}</textarea>
+                    <div class="form-text">กรุณาระบุยาที่แพ้โดยคั่นด้วยเครื่องหมายจุลภาค (,) เช่น พาราเซตามอล, เพนนิซิลิน</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>เปลี่ยนรหัสผ่าน</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="current_password" class="form-label">รหัสผ่านปัจจุบัน</label>
+                    <input type="password" class="form-control" id="current_password" name="current_password">
+                </div>
+                <div class="mb-3">
+                    <label for="new_password" class="form-label">รหัสผ่านใหม่</label>
+                    <input type="password" class="form-control" id="new_password" name="new_password">
+                    <div class="form-text">เว้นว่างไว้หากไม่ต้องการเปลี่ยนรหัสผ่าน</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary me-md-2">ยกเลิก</a>
+            <button type="submit" class="btn btn-primary">บันทึกการเปลี่ยนแปลง</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
