@@ -13,14 +13,28 @@ import os
 # สร้าง Flask app
 app = Flask(__name__)
 
+# ตั้งค่า logging
+import logging
+from logging.handlers import RotatingFileHandler
+if not app.debug:
+    file_handler = RotatingFileHandler('error.log', maxBytes=10240, backupCount=10)
+    file_handler.setFormatter(logging.Formatter(
+        '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+    ))
+    file_handler.setLevel(logging.INFO)
+    app.logger.addHandler(file_handler)
+    app.logger.setLevel(logging.INFO)
+    app.logger.info('Medical App startup')
+
 # ตั้งค่า Secret Key จาก environment variable หรือใช้ค่าเริ่มต้นถ้าไม่มี
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', os.urandom(24))
 
 # ตั้งค่าเพิ่มเติมสำหรับ production
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['PROPAGATE_EXCEPTIONS'] = True  # เพื่อให้เห็น error details
+app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(minutes=60)  # Session timeout
 
-# ตั้งค่าฐานข้อมูล - ใช้ DATABASE_URL จาก environment variable ถ้ามี
+# ตั้งค่าฐานข้อมูล
 database_url = os.environ.get('DATABASE_URL')
 
 try:
@@ -29,17 +43,25 @@ try:
         if database_url.startswith("postgres://"):
             database_url = database_url.replace("postgres://", "postgresql://", 1)
         app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+        # ตั้งค่า connection pool สำหรับ PostgreSQL
         app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-            'pool_size': 5,
-            'max_overflow': 2,
-            'pool_timeout': 30,
-            'pool_recycle': 1800,
+            'pool_size': 5,  # จำนวน connections ในพูล
+            'max_overflow': 2,  # จำนวน connections เพิ่มเติมที่อนุญาต
+            'pool_timeout': 30,  # timeout สำหรับการรอ connection (วินาที)
+            'pool_recycle': 1800,  # รีไซเคิล connections ทุก 30 นาที
+            'pool_pre_ping': True,  # ทดสอบ connection ก่อนใช้งาน
         }
     else:
         # ใช้ SQLite สำหรับ development
         base_dir = os.path.abspath(os.path.dirname(__file__))
         db_path = os.path.join(base_dir, 'instance', 'medical_app.db')
+        if not os.path.exists('instance'):
+            os.makedirs('instance')
         app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+        # ตั้งค่าสำหรับ SQLite
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+            'connect_args': {'timeout': 15},  # timeout สำหรับ SQLite
+        }
 except Exception as e:
     print(f"Database configuration error: {e}")
 
@@ -52,6 +74,26 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'กรุณาเข้าสู่ระบบก่อนใช้งาน'
+
+# Request hooks
+@app.before_request
+def before_request():
+    try:
+        db.session.ping()  # ทดสอบ database connection
+    except Exception as e:
+        app.logger.error(f"Database connection error: {str(e)}")
+        db.session.rollback()
+        return "ขออภัย ไม่สามารถเชื่อมต่อฐานข้อมูลได้ กรุณาลองใหม่อีกครั้ง", 500
+
+@app.teardown_request
+def teardown_request(exception=None):
+    if exception:
+        db.session.rollback()
+        app.logger.error(f"Request error: {str(exception)}")
+    try:
+        db.session.remove()
+    except Exception as e:
+        app.logger.error(f"Session removal error: {str(e)}")
 
 # Custom Jinja2 filters
 @app.template_filter('fromjson')
@@ -463,11 +505,22 @@ def register():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        user = User.query.filter_by(username=request.form.get('username')).first()
-        if user and user.check_password(request.form.get('password')):
-            login_user(user)
-            return redirect(url_for('dashboard'))
-        flash('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง')
+        try:
+            username = request.form.get('username')
+            password = request.form.get('password')
+            if not username or not password:
+                flash('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน')
+                return redirect(url_for('login'))
+            
+            user = User.query.filter_by(username=username).first()
+            if user and user.check_password(password):
+                login_user(user)
+                return redirect(url_for('dashboard'))
+            flash('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง')
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Login error: {str(e)}")
+            flash('เกิดข้อผิดพลาดในการเข้าสู่ระบบ กรุณาลองใหม่อีกครั้ง')
     return render_template('login.html')
 
 @app.route('/logout')
@@ -607,13 +660,15 @@ def init_db():
     """ฟังก์ชันสำหรับสร้างฐานข้อมูล"""
     try:
         with app.app_context():
+            # ทดสอบการเชื่อมต่อฐานข้อมูล
+            db.engine.connect()
             # สร้างตารางถ้ายังไม่มี
             db.create_all()
-            print("Database initialized successfully!")
+            app.logger.info("Database initialized successfully!")
+            return True
     except Exception as e:
-        print(f"Error initializing database: {e}")
+        app.logger.error(f"Database initialization error: {str(e)}")
         return False
-    return True
 
 if __name__ == '__main__':
     try:
