@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2 class="text-center mb-4">
+                    <i class="fas fa-clipboard-check text-primary"></i>
+                    ผลการวิเคราะห์
+                </h2>
+
+                <div class="mb-4">
+                    <h4>ค่าดัชนีมวลกาย (BMI) ของคุณ: {{ "%.1f"|format(bmi) }}</h4>
+                    <div class="progress bg-dark">
+                        {% set bmi_percentage = ((bmi - 15) / (35 - 15)) * 100 %}
+                        {% set bmi_percentage = [0, [100, bmi_percentage]|min]|max %}
+                        <div class="progress-bar 
+                            {% if bmi < 18.5 %}bg-warning
+                            {% elif bmi < 23 %}bg-success
+                            {% elif bmi < 25 %}bg-warning
+                            {% else %}bg-danger{% endif %}"
+                            role="progressbar" style="width: {{ bmi_percentage }}%">
+                        </div>
+                    </div>
+                    <div class="mt-2 text-muted">
+                        {% if bmi < 18.5 %}
+                            น้ำหนักต่ำกว่าเกณฑ์
+                        {% elif bmi < 23 %}
+                            น้ำหนักปกติ
+                        {% elif bmi < 25 %}
+                            น้ำหนักเกิน
+                        {% elif bmi < 30 %}
+                            อ้วน
+                        {% else %}
+                            อ้วนมาก
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h4>อาการที่อาจเป็นไปได้</h4>
+                    {% for condition in conditions %}
+                    <div class="card bg-dark mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ condition.condition }}</h5>
+                            <div class="progress bg-secondary">
+                                <div class="progress-bar bg-primary" role="progressbar" 
+                                     style="width: {{ condition.probability * 100 }}%">
+                                    {{ "%.0f"|format(condition.probability * 100) }}%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="alert {% if 'immediately' in recommendation %}alert-danger{% else %}alert-info{% endif %}">
+                    <h4 class="alert-heading">
+                        <i class="fas {% if 'immediately' in recommendation %}fa-exclamation-triangle{% else %}fa-info-circle{% endif %}"></i>
+                        คำแนะนำ
+                    </h4>
+                    <p class="mb-0">{{ recommendation }}</p>
+                </div>
+
+                <div class="text-center mt-4">
+                    <a href="{{ url_for('symptom_checker') }}" class="btn btn-primary">
+                        <i class="fas fa-redo"></i>
+                        ตรวจสอบอีกครั้ง
+                    </a>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary ms-2">
+                        <i class="fas fa-chart-line"></i>
+                        ดูประวัติ
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

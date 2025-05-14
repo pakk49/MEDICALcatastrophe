@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-10 offset-md-1">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="text-center mb-4">
+                    <i class="fas fa-stethoscope text-primary"></i>
+                    ตรวจสอบอาการ
+                </h2>
+                <form method="POST" class="symptom-checker-form">
+                    <div class="mb-4">
+                        <h4>ข้อมูลร่างกาย</h4>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="weight" class="form-label">น้ำหนัก (กก.)</label>
+                                    <input type="number" step="0.1" class="form-control" id="weight" name="weight" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="height" class="form-label">ส่วนสูง (ซม.)</label>
+                                    <input type="number" step="0.1" class="form-control" id="height" name="height" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <h4>เลือกอาการของคุณ</h4>
+                        <p class="text-muted">เลือกอาการทั้งหมดที่คุณพบ:</p>
+                        
+                        <div class="row">
+                            <!-- อาการทั่วไป -->
+                            <div class="col-md-4">
+                                <h5>อาการทั่วไป</h5>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="fever" name="symptoms" value="fever">
+                                    <label class="form-check-label" for="fever">มีไข้</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="fatigue" name="symptoms" value="fatigue">
+                                    <label class="form-check-label" for="fatigue">อ่อนเพลีย</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="weakness" name="symptoms" value="weakness">
+                                    <label class="form-check-label" for="weakness">อ่อนแรง</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="body_ache" name="symptoms" value="body_ache">
+                                    <label class="form-check-label" for="body_ache">ปวดเมื่อยตามตัว</label>
+                                </div>
+                            </div>
+
+                            <!-- อาการระบบทางเดินหายใจ -->
+                            <div class="col-md-4">
+                                <h5>ระบบทางเดินหายใจ</h5>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="cough" name="symptoms" value="cough">
+                                    <label class="form-check-label" for="cough">ไอ</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="shortness_breath" name="symptoms" value="shortness_breath">
+                                    <label class="form-check-label" for="shortness_breath">หายใจลำบาก</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="runny_nose" name="symptoms" value="runny_nose">
+                                    <label class="form-check-label" for="runny_nose">น้ำมูกไหล</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="sneezing" name="symptoms" value="sneezing">
+                                    <label class="form-check-label" for="sneezing">จาม</label>
+                                </div>
+                            </div>
+
+                            <!-- อาการระบบทางเดินอาหาร -->
+                            <div class="col-md-4">
+                                <h5>ระบบทางเดินอาหาร</h5>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="nausea" name="symptoms" value="nausea">
+                                    <label class="form-check-label" for="nausea">คลื่นไส้</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="vomiting" name="symptoms" value="vomiting">
+                                    <label class="form-check-label" for="vomiting">อาเจียน</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="diarrhea" name="symptoms" value="diarrhea">
+                                    <label class="form-check-label" for="diarrhea">ท้องเสีย</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="stomach_pain" name="symptoms" value="stomach_pain">
+                                    <label class="form-check-label" for="stomach_pain">ปวดท้อง</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-center mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-search"></i>
+                            วิเคราะห์อาการ
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
