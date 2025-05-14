@@ -75,26 +75,6 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'กรุณาเข้าสู่ระบบก่อนใช้งาน'
 
-# Request hooks
-@app.before_request
-def before_request():
-    try:
-        db.session.ping()  # ทดสอบ database connection
-    except Exception as e:
-        app.logger.error(f"Database connection error: {str(e)}")
-        db.session.rollback()
-        return "ขออภัย ไม่สามารถเชื่อมต่อฐานข้อมูลได้ กรุณาลองใหม่อีกครั้ง", 500
-
-@app.teardown_request
-def teardown_request(exception=None):
-    if exception:
-        db.session.rollback()
-        app.logger.error(f"Request error: {str(exception)}")
-    try:
-        db.session.remove()
-    except Exception as e:
-        app.logger.error(f"Session removal error: {str(e)}")
-
 # Custom Jinja2 filters
 @app.template_filter('fromjson')
 def fromjson_filter(value):
