@@ -13,20 +13,22 @@ import os
 # สร้าง Flask app
 app = Flask(__name__)
 
-# ตั้งค่า Secret Key
+# ตั้งค่า Secret Key จาก environment variable หรือใช้ค่าเริ่มต้นถ้าไม่มี
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', os.urandom(24))
 
-# ตั้งค่าฐานข้อมูล
-if os.environ.get('DATABASE_URL'):
-    # Running on Render.com, use PostgreSQL
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL').replace('postgres://', 'postgresql://')
+# ตั้งค่าฐานข้อมูล - ใช้ DATABASE_URL จาก environment variable ถ้ามี
+database_url = os.environ.get('DATABASE_URL')
+if database_url and database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+if database_url:
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
-    # Local development, use SQLite
     base_dir = os.path.abspath(os.path.dirname(__file__))
     db_path = os.path.join(base_dir, 'instance', 'medical_app.db')
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 
+# ตั้งค่าเพิ่มเติมสำหรับ production
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # สร้าง instances

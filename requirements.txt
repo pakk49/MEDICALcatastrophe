@@ -4,3 +4,4 @@ Flask-Login
 Flask-Migrate
 plotly
 pandas
+gunicorn

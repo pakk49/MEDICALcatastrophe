@@ -1,0 +1,10 @@
+bind = "0.0.0.0:$PORT"
+workers = 4
+threads = 2
+worker_class = "sync"
+worker_connections = 1000
+timeout = 30
+keepalive = 2
+accesslog = "-"
+errorlog = "-"
+loglevel = "info"
